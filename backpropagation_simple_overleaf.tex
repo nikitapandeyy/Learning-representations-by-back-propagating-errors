@@ -1,0 +1,449 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{tcolorbox}
+\usepackage{hyperref}
+
+\title{Backpropagation -- Simple Recall Notes}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section*{1. The Big Idea}
+
+A neural network has two main jobs:
+
+\begin{enumerate}
+\item \textbf{Forward pass:} calculate the output.
+\item \textbf{Backward pass:} find how the weights should change to reduce the error.
+\end{enumerate}
+
+\[
+\boxed{\text{Input}\rightarrow\text{Hidden}\rightarrow\text{Output}
+\rightarrow\text{Error}\rightarrow\text{Backpropagation}}
+\]
+
+\begin{tcolorbox}
+\textbf{Easy memory rule:}\\
+Forward = ``What did the network predict?''\\
+Backward = ``How did the weights contribute to the error?''
+\end{tcolorbox}
+
+\section*{2. What is a Hidden Unit?}
+
+A hidden unit is simply a neuron between the input and output layers.
+
+\[
+\text{Input}\rightarrow\boxed{\text{Hidden}}\rightarrow\text{Output}
+\]
+
+We know the desired output, but we do not directly specify what each hidden unit should output. The network learns useful hidden representations through training.
+
+\section*{3. Our Small Network}
+
+Consider:
+
+\[
+\boxed{3\text{ inputs}\rightarrow2\text{ hidden neurons}\rightarrow1\text{ output}}
+\]
+
+Write the input as a column vector:
+
+\[
+X=
+\begin{bmatrix}
+x_1\\x_2\\x_3
+\end{bmatrix}
+\qquad (3\times1)
+\]
+
+and the input-to-hidden weights as:
+
+\[
+W_1=
+\begin{bmatrix}
+w_{11}&w_{12}&w_{13}\\
+w_{21}&w_{22}&w_{23}
+\end{bmatrix}
+\qquad (2\times3)
+\]
+
+Therefore:
+
+\[
+\boxed{(2\times3)(3\times1)=(2\times1)}
+\]
+
+The middle numbers must match.
+
+\section*{4. Why Does $W_1X$ Work?}
+
+Suppose
+
+\[
+X=
+\begin{bmatrix}
+1\\0\\1
+\end{bmatrix}
+\]
+
+and
+
+\[
+W_1=
+\begin{bmatrix}
+0.5&-1&0.8\\
+-0.2&0.3&0.4
+\end{bmatrix}.
+\]
+
+First hidden neuron:
+
+\[
+0.5(1)+(-1)(0)+0.8(1)=1.3
+\]
+
+Second hidden neuron:
+
+\[
+-0.2(1)+0.3(0)+0.4(1)=0.2
+\]
+
+Thus
+
+\[
+W_1X=
+\begin{bmatrix}
+1.3\\0.2
+\end{bmatrix}.
+\]
+
+\section*{5. Forward Pass}
+
+Add bias and activation:
+
+\[
+Z_1=W_1X+b_1
+\]
+
+\[
+H=f(Z_1)
+\]
+
+Then:
+
+\[
+Z_2=W_2H+b_2
+\]
+
+\[
+Y=f(Z_2)
+\]
+
+So:
+
+\[
+\boxed{X\rightarrow H\rightarrow Y}
+\]
+
+is the forward pass.
+
+\section*{6. Error}
+
+A simple squared-error function is:
+
+\[
+\boxed{E=\frac12(d-Y)^2}
+\]
+
+where $d$ is the desired output and $Y$ is the network output.
+
+Learning tries to make $E$ smaller.
+
+\section*{7. What Does Backpropagation Need to Find?}
+
+For every weight $w$, we want:
+
+\[
+\boxed{\frac{\partial E}{\partial w}}
+\]
+
+In simple English:
+
+\begin{quote}
+If I change this weight a little, how does the error change?
+\end{quote}
+
+Then update the weight:
+
+\[
+\boxed{
+w_{\text{new}}
+=
+w_{\text{old}}
+-
+\eta\frac{\partial E}{\partial w}
+}
+\]
+
+where $\eta$ is the learning rate.
+
+\section*{8. Why the Chain Rule?}
+
+The error does not directly depend on an early weight.
+
+Instead:
+
+\[
+w\rightarrow h\rightarrow y\rightarrow E.
+\]
+
+So we use the chain rule:
+
+\[
+\boxed{
+\frac{\partial E}{\partial w}
+=
+\frac{\partial E}{\partial y}
+\frac{\partial y}{\partial h}
+\frac{\partial h}{\partial w}
+}
+\]
+
+For a longer network, we simply keep multiplying the derivatives along the path.
+
+\begin{tcolorbox}
+\textbf{Remember:}\\
+Chain rule = follow the path backward and multiply the local derivatives.
+\end{tcolorbox}
+
+\section*{9. One-Neuron Example}
+
+For one hidden neuron:
+
+\[
+w_1\rightarrow z_h\rightarrow h\rightarrow z_y\rightarrow y\rightarrow E
+\]
+
+Backward:
+
+\[
+E\rightarrow y\rightarrow z_y\rightarrow h\rightarrow z_h\rightarrow w_1
+\]
+
+Therefore:
+
+\[
+\frac{\partial E}{\partial w_1}
+=
+\frac{\partial E}{\partial y}
+\frac{\partial y}{\partial z_y}
+\frac{\partial z_y}{\partial h}
+\frac{\partial h}{\partial z_h}
+\frac{\partial z_h}{\partial w_1}.
+\]
+
+Do not memorize this long equation yet. Remember the path.
+
+\section*{10. Two Hidden Neurons}
+
+Let
+
+\[
+H=
+\begin{bmatrix}
+h_1\\h_2
+\end{bmatrix}.
+\]
+
+The output layer receives both hidden activations.
+
+The output error is propagated backward to both hidden neurons.
+
+The simple idea is:
+
+\[
+\boxed{
+\text{hidden error}
+=
+\text{output error}
+\times
+\text{connecting weight}
+\times
+\text{activation derivative}
+}
+\]
+
+This is how the network assigns responsibility for the final error to earlier units.
+
+\section*{11. The Important Matrix Gradient}
+
+We already know:
+
+\[
+W_1:(2\times3)
+\]
+
+and
+
+\[
+X:(3\times1).
+\]
+
+Forward:
+
+\[
+\boxed{
+W_1X=(2\times3)(3\times1)=(2\times1)
+}
+\]
+
+During backpropagation, let the hidden error vector be:
+
+\[
+\delta_h=
+\begin{bmatrix}
+\delta_1\\
+\delta_2
+\end{bmatrix}
+\qquad(2\times1)
+\]
+
+and:
+
+\[
+X^T=
+\begin{bmatrix}
+x_1&x_2&x_3
+\end{bmatrix}
+\qquad(1\times3).
+\]
+
+Then:
+
+\[
+\boxed{
+\frac{\partial E}{\partial W_1}
+=
+\delta_hX^T
+}
+\]
+
+because
+
+\[
+\boxed{
+(2\times1)(1\times3)=(2\times3)
+}
+\]
+
+The gradient has the same shape as $W_1$.
+
+\section*{12. The Shape Trick}
+
+\[
+\boxed{
+\text{Forward: }W_1X
+}
+\]
+
+\[
+(2\times3)(3\times1)=(2\times1)
+\]
+
+and
+
+\[
+\boxed{
+\text{Backward: }\delta_hX^T
+}
+\]
+
+\[
+(2\times1)(1\times3)=(2\times3)
+\]
+
+Therefore:
+
+\[
+\boxed{\text{gradient shape}=\text{weight shape}}
+\]
+
+This lets us update the whole weight matrix:
+
+\[
+\boxed{
+W_1^{new}
+=
+W_1-\eta\frac{\partial E}{\partial W_1}
+}
+\]
+
+\section*{13. The Whole Idea in One Picture}
+
+\[
+\boxed{
+\text{FORWARD:}\quad
+X\rightarrow H\rightarrow Y\rightarrow E
+}
+\]
+
+\[
+\boxed{
+\text{BACKWARD:}\quad
+E\rightarrow Y\rightarrow H\rightarrow W
+}
+\]
+
+\begin{tcolorbox}
+\centering
+\textbf{Predict $\rightarrow$ Measure Error $\rightarrow$ Send Error Back $\rightarrow$ Update Weights}
+\end{tcolorbox}
+
+\section*{14. What to Memorize}
+
+Do not memorize all the long equations yet.
+
+Remember only:
+
+\begin{enumerate}
+\item Forward = calculate prediction.
+\item Error = compare prediction with target.
+\item Chain rule = follow the effect backward.
+\item Gradient = tells us how a weight affects error.
+\item Update = subtract the gradient.
+\end{enumerate}
+
+The core equations are:
+
+\[
+Z_1=W_1X+b_1
+\]
+
+\[
+H=f(Z_1)
+\]
+
+\[
+Z_2=W_2H+b_2
+\]
+
+\[
+Y=f(Z_2)
+\]
+
+\[
+E=\frac12(d-Y)^2
+\]
+
+\[
+W_{\text{new}}
+=
+W_{\text{old}}
+-
+\eta\frac{\partial E}{\partial W}
+\]
+
+\end{document}
