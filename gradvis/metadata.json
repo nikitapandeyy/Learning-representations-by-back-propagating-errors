@@ -1,0 +1,6 @@
+{
+  "name": "Micrograd Autodiff Visualizer",
+  "description": "Interactive reverse-mode automatic differentiation and backpropagation visualizer for neural networks with step-by-step computation graphs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
