@@ -390,12 +390,9 @@ $$
 
 Then:
 
-$$
-\frac{\partial E}{\partial x}
-=
-\frac{\partial E}{\partial z}
-\frac{\partial z}{\partial x}
-$$
+**Chain Rule**
+
+∂E/∂x = (∂E/∂z) × (∂z/∂x)
 
 In simple words, if changing \(x\) changes \(z\), and changing \(z\) changes the error, the chain rule combines those two effects.
 
@@ -425,11 +422,7 @@ $$
 
 Using the chain rule:
 
-$$
-\frac{dE}{dx}
-=
-\frac{dE}{dz}\frac{dz}{dx}
-$$
+∂E/∂x = (∂E/∂z) × (∂z/∂x)
 
 $$
 = 2z \times 2
