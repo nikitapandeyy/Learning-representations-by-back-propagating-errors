@@ -1,1256 +1,2822 @@
-# 🧠 Backpropagation & Autograd Visualizer
+# Backpropagation & Autograd Visualizer
 
-### Understanding Neural Networks by Rebuilding Backpropagation from Scratch
+> **Learn backpropagation by seeing every calculation happen step by step.**
 
-An interactive, educational project inspired by the research paper **“Learning representations by back-propagating errors” (1986)** by David E. Rumelhart, Geoffrey E. Hinton, and Ronald J. Williams.
+This project is a learning-focused implementation of **backpropagation, automatic differentiation, computational graphs, and neural-network training**.
 
-This project explores how neural networks learn, how hidden neurons develop useful representations, how errors travel backward through a network, and how gradients help update weights.
+The project is inspired by the research paper:
 
-Rather than hiding the mathematics behind a deep-learning framework, this project aims to make each calculation visible and understandable. We begin with a tiny neural network, implement backpropagation manually, and gradually build our own miniature autograd engine.
+> **Learning representations by back-propagating errors**
+> David E. Rumelhart, Geoffrey E. Hinton, Ronald J. Williams
+> *Nature, 1986*
 
-> **The central idea:** A neural network can learn useful internal representations by adjusting its connection weights to reduce the difference between its predictions and the desired outputs.
+The goal is not to hide the mathematics behind a deep-learning framework.
 
----
-
-## 📚 Table of Contents
-
-* [1. About the Research Paper](#1-about-the-research-paper)
-* [2. Why Was This Research Important?](#2-why-was-this-research-important)
-* [3. The Problem: Learning Hidden Representations](#3-the-problem-learning-hidden-representations)
-* [4. How a Neural Network Works](#4-how-a-neural-network-works)
-* [5. Forward Propagation](#5-forward-propagation)
-* [6. The Error Function](#6-the-error-function)
-* [7. Why Do We Need Backpropagation?](#7-why-do-we-need-backpropagation)
-* [8. The Chain Rule](#8-the-chain-rule)
-* [9. Backpropagation: The Mathematics](#9-backpropagation-the-mathematics)
-* [10. Gradient Descent and Weight Updates](#10-gradient-descent-and-weight-updates)
-* [11. How Hidden Units Learn Representations](#11-how-hidden-units-learn-representations)
-* [12. Experiments in the Paper](#12-experiments-in-the-paper)
-* [13. Limitations Discussed in the Paper](#13-limitations-discussed-in-the-paper)
-* [14. From the Paper to Our Implementation](#14-from-the-paper-to-our-implementation)
-* [15. Our Autograd Engine](#15-our-autograd-engine)
-* [16. Project Architecture](#16-project-architecture)
-* [17. Technology Stack](#17-technology-stack)
-* [18. Running the Project](#18-running-the-project)
-* [19. Learning Roadmap](#19-learning-roadmap)
-* [20. What This Project Teaches](#20-what-this-project-teaches)
-* [21. References](#21-references)
-
----
-
-## 1. About the Research Paper
-
-**Paper:** Learning representations by back-propagating errors
-**Authors:** David E. Rumelhart, Geoffrey E. Hinton, Ronald J. Williams
-**Published:** 1986
-**Journal:** Nature, Volume 323, pages 533–536
-**DOI:** [10.1038/323533a0](https://doi.org/10.1038/323533a0)
-
-The paper describes a learning procedure called **back-propagation**, which repeatedly adjusts the weights of connections in a neural network to minimize the difference between actual outputs and desired outputs.
-
-The authors demonstrate that this process can do more than simply map inputs to outputs. It can also allow intermediate, or *hidden*, units to develop internal representations that are useful for solving a task.
-
-This is a particularly important idea because, in many learning problems, we know what answer a network should produce, but we do not know what every intermediate neuron should represent.
-
-The paper studies how a network can learn those internal representations through the process of adjusting its weights.
-
-### The paper's central contributions
-
-* Describes a general learning procedure for layered networks of neuron-like units.
-* Shows how derivatives of an error function can be propagated backward through a network.
-* Explains how weights can be adjusted using gradient descent.
-* Demonstrates that hidden units can learn useful internal representations.
-* Presents experiments involving symmetry detection and family-tree relationships.
-* Discusses the limitations of gradient descent and the biological plausibility of the proposed procedure.
-
-This project uses these ideas as the foundation for an interactive implementation.
-
----
-
-## 2. Why Was This Research Important?
-
-Consider a simple task: a neural network receives an input and must produce a correct answer.
-
-If the input units connect directly to the output units, it is relatively straightforward to adjust the connection weights based on the output error.
-
-However, many tasks are more complex. The network may need to recognize patterns, combine information, or discover relationships that are not explicitly provided as inputs.
-
-This is where hidden units become useful.
-
-Imagine asking a network to recognize whether a visual pattern is symmetrical. The input describes the pattern, and the output indicates whether it is symmetrical. But what should the hidden neurons detect to solve the problem?
-
-We might manually design features for the network, but that requires us to know in advance which features are useful.
-
-The paper explores a different approach: let the network learn suitable internal representations by adjusting its weights according to the error at its output.
-
-### The key challenge
-
-A network receives a desired answer at its output, but the task does not directly specify the correct activation of each hidden neuron.
-
-Backpropagation provides a way to calculate how changing those hidden activations and their incoming weights would affect the final error.
-
-This gives the network a learning signal for its intermediate layers.
-
----
-
-## 3. The Problem: Learning Hidden Representations
-
-A neural network can contain three broad types of layers:
-
-| Layer         | Purpose                                                    |
-| ------------- | ---------------------------------------------------------- |
-| Input layer   | Receives the information supplied to the network           |
-| Hidden layers | Transform information and develop internal representations |
-| Output layer  | Produces the network's prediction                          |
-
-A simple network can be represented as:
+Instead, this project builds the concepts **from the ground up**:
 
 ```text
-Input Layer       Hidden Layer       Output Layer
-
-   x₁ ────────────► h₁ ──────────────►
-                    ▲                  │
-   x₂ ─────────────┤                  ▼
-                    │                  y
-   x₃ ────────────► h₂ ──────────────►
+Derivatives
+     ↓
+Chain Rule
+     ↓
+Forward Propagation
+     ↓
+Backpropagation
+     ↓
+Gradient Descent
+     ↓
+Manual Backpropagation
+     ↓
+Computational Graph
+     ↓
+Automatic Differentiation
+     ↓
+Custom Autograd Engine
+     ↓
+Neural Network
+     ↓
+Interactive Visualization
 ```
 
-The hidden units are not simply fixed feature detectors. Their incoming weights can change during learning, allowing their responses to adapt to the task.
+---
 
-For example, a hidden neuron may become responsive to a particular combination of input patterns. Another hidden neuron may learn a different combination.
+# Table of Contents
 
-The network's useful internal representation emerges through the interactions of these learned units.
-
-### What does “representation” mean?
-
-A representation is the way information is encoded inside a network.
-
-For example, the original input might describe an object using many individual values. A hidden layer transforms those values into a new pattern of activations.
-
-That new pattern may make it easier for the output layer to produce the desired answer.
-
-The important point is that a hidden representation does not necessarily correspond to a human-readable concept. It is an internal pattern of activity that helps the network perform its task.
+* [About the Research Paper](#about-the-research-paper)
+* [Why Was This Research Important?](#why-was-this-research-important)
+* [The Problem: Learning Hidden Representations](#the-problem-learning-hidden-representations)
+* [What Is a Neural Network?](#what-is-a-neural-network)
+* [A Tiny Neural Network](#a-tiny-neural-network)
+* [Forward Propagation](#forward-propagation)
+* [Activation Function](#activation-function)
+* [Calculating the Error](#calculating-the-error)
+* [Why Do We Need Backpropagation?](#why-do-we-need-backpropagation)
+* [The Chain Rule](#the-chain-rule)
+* [Backpropagation Mathematics](#backpropagation-mathematics)
+* [Backward Pass](#backward-pass)
+* [Gradient Descent](#gradient-descent)
+* [How Hidden Units Learn](#how-hidden-units-learn)
+* [Example Calculation](#example-calculation)
+* [From Mathematics to Code](#from-mathematics-to-code)
+* [Manual Backpropagation](#manual-backpropagation)
+* [Computational Graph](#computational-graph)
+* [Automatic Differentiation](#automatic-differentiation)
+* [Our Custom Autograd Engine](#our-custom-autograd-engine)
+* [Matrix Version](#matrix-version)
+* [3 Inputs → 2 Hidden Neurons → 1 Output](#3-inputs--2-hidden-neurons--1-output)
+* [Project Architecture](#project-architecture)
+* [Visualization](#visualization)
+* [Technology Stack](#technology-stack)
+* [Project Structure](#project-structure)
+* [Running the Project](#running-the-project)
+* [Learning Roadmap](#learning-roadmap)
+* [What This Project Teaches](#what-this-project-teaches)
+* [Limitations](#limitations)
+* [References](#references)
 
 ---
 
-## 4. How a Neural Network Works
+# About the Research Paper
 
-The paper describes units that receive values from lower layers, combine them using connection weights, and apply a nonlinear function to produce their outputs.
+The foundation of this project is the 1986 paper:
 
-A typical unit calculates a weighted sum:
+**"Learning representations by back-propagating errors"**
 
-$$
-z_j = \sum_i w_{ij}y_i + b_j
-$$
+by:
 
-Where:
+* David E. Rumelhart
+* Geoffrey E. Hinton
+* Ronald J. Williams
 
-* \(y_i\) is the output from a connected unit in the previous layer.
-* \(w_{ij}\) is the weight of the connection from unit \(i\) to unit \(j\).
-* \(b_j\) is the bias.
-* \(z_j\) is the total input to the unit.
+The paper describes a method for training multi-layer neural networks using **backpropagation**.
 
-The unit then applies an activation function:
+The central idea is simple:
 
-$$
-y_j = f(z_j)
-$$
+> A neural network makes a prediction, measures how wrong that prediction is, and then propagates information about the error backward through the network so that the weights can be adjusted.
 
-For our initial implementation, we use the sigmoid activation function:
+The paper shows how this allows neural networks to learn useful internal representations using hidden units.
 
-$$
-\sigma(z) = \frac{1}{1+e^{-z}}
-$$
-
-The sigmoid function maps any real-valued input to a value between 0 and 1.
-
-### Why use an activation function?
-
-Without a nonlinear activation function, stacking layers of weighted sums would still produce an overall linear transformation.
-
-Nonlinear activation functions allow a network to represent more complex input-output relationships.
-
-### What is a bias?
-
-A bias is an additional adjustable parameter that shifts a unit's weighted input before the activation function is applied.
-
-It can be understood as an additional weight connected to an input that is always equal to 1.
-
-The paper treats biases as weights in this way.
+The paper also explains that the derivatives needed for learning can be calculated efficiently using a combination of a **forward pass** and a **backward pass**.
 
 ---
 
-## 5. Forward Propagation
+# Why Was This Research Important?
 
-Forward propagation is the process of calculating the network's outputs from its inputs.
-
-We begin with a very small network:
+A neural network can contain multiple layers:
 
 ```text
-       Input           Hidden           Output
-
-         x ── w₁ ──►     h ── w₂ ──►      y
+Input Layer
+     ↓
+Hidden Layer
+     ↓
+Hidden Layer
+     ↓
+Output Layer
 ```
 
-For simplicity, this initial example has:
+The difficulty is that the hidden layers do not directly receive the desired output.
 
-* One input value
-* One hidden neuron
-* One output neuron
-* Two trainable weights
-* No explicit bias terms
-
-Let:
-
-$$
-x = 1,\quad w_1 = 0.5,\quad w_2 = 0.8
-$$
-
-### Step 1: Calculate the hidden neuron's weighted input
-
-$$
-z_h = w_1x
-$$
-
-$$
-z_h = 0.5 \times 1 = 0.5
-$$
-
-### Step 2: Calculate the hidden neuron's activation
-
-$$
-h = \sigma(z_h)
-$$
-
-$$
-h = \sigma(0.5) \approx 0.6225
-$$
-
-The hidden neuron now has an activation of approximately 0.6225.
-
-### Step 3: Calculate the output neuron's weighted input
-
-$$
-z_y = w_2h
-$$
-
-$$
-z_y = 0.8 \times 0.6225 \approx 0.4980
-$$
-
-### Step 4: Calculate the output
-
-$$
-y = \sigma(z_y)
-$$
-
-$$
-y = \sigma(0.4980) \approx 0.6220
-$$
-
-The network's prediction is approximately 0.6220.
-
-### Forward pass summary
-
-| Quantity              | Calculation     | Approximate value |
-| --------------------- | --------------- | ----------------: |
-| Input                 | \(x\)           |            1.0000 |
-| Hidden weighted input | \(w_1x\)        |            0.5000 |
-| Hidden activation     | \(\sigma(z_h)\) |            0.6225 |
-| Output weighted input | \(w_2h\)        |            0.4980 |
-| Prediction            | \(\sigma(z_y)\) |            0.6220 |
-
-Forward propagation calculates the prediction. It does not, by itself, tell us how to improve the weights.
-
-For that, we need an error function and a learning procedure.
-
----
-
-## 6. The Error Function
-
-A learning system needs a way to measure how different its prediction is from the desired output.
-
-Let:
-
-* \(y\) be the actual output produced by the network.
-* \(d\) be the desired output.
-* \(E\) be the error.
-
-For our simple example, we use squared error:
-
-$$
-E = \frac{1}{2}(d-y)^2
-$$
-
-The factor \(\frac{1}{2}\) is included because it simplifies the derivative.
-
-Suppose the desired output is:
-
-$$
-d = 1
-$$
-
-And the network prediction is:
-
-$$
-y \approx 0.6220
-$$
-
-Then:
-
-$$
-E = \frac{1}{2}(1-0.6220)^2
-$$
-
-$$
-E \approx 0.0714
-$$
-
-The objective is to reduce this error by adjusting the weights.
-
-### Error across multiple cases
-
-The paper also describes the total error over a finite set of input-output cases.
-
-In simplified notation:
-
-$$
-E = \frac{1}{2}\sum_c\sum_j (d_{cj}-y_{cj})^2
-$$
-
-Where:
-
-* \(c\) identifies an input-output case.
-* \(j\) identifies an output unit.
-* \(d_{cj}\) is the desired output.
-* \(y_{cj}\) is the actual output.
-
-The total error combines the output differences across the cases and output units being considered.
-
-Our first visualizer uses a single case and a single output so the mathematics remains easy to follow.
-
----
-
-## 7. Why Do We Need Backpropagation?
-
-After the forward pass, we know the prediction and the error.
-
-But we still need to answer:
-
-* Which weights contributed to the error?
-* How sensitive is the error to each weight?
-* Should each weight increase or decrease?
-* By how much should we change it?
-
-A simple network has only a few weights, so we might calculate the effect of each weight individually.
-
-But a larger neural network can contain many layers and thousands or millions of weights. Recalculating the entire network's error for every possible weight change would be inefficient.
-
-Backpropagation addresses this by using derivatives and the chain rule to calculate how the error depends on the network's weights.
-
-It begins at the output, where the error is measured, and propagates derivative information backward through the network.
+For example:
 
 ```text
-Forward pass
-
-Input → Hidden → Output → Error
-  ────────────────────────────►
-
-Backward pass
-
-Input ← Hidden ← Output ← Error
-  ◄────────────────────────────
+Input → Hidden → Output
+                  ↓
+              Target
 ```
 
-The forward pass calculates values.
+We know whether the final output is correct.
 
-The backward pass calculates gradients.
+But how do we know how much each hidden neuron contributed to the error?
 
-Together, they provide the information needed to update the network's weights.
+And how much should each weight change?
 
----
+Backpropagation solves this problem using the **chain rule of calculus**.
 
-## 8. The Chain Rule
-
-The chain rule is the mathematical foundation of backpropagation.
-
-It tells us how to calculate the derivative of a quantity that depends on another quantity through an intermediate variable.
-
-Suppose:
-
-$$
-z = f(x)
-$$
-
-and:
-
-$$
-E = g(z)
-$$
-
-Then:
-
-**Chain Rule**
-
-∂E/∂x = (∂E/∂z) × (∂z/∂x)
-
-In simple words, if changing \(x\) changes \(z\), and changing \(z\) changes the error, the chain rule combines those two effects.
-
-### A simple example
-
-Suppose:
-
-$$
-z = 2x
-$$
-
-$$
-E = z^2
-$$
-
-Then:
-
-$$
-\frac{dE}{dz}=2z
-$$
-
-And:
-
-$$
-\frac{dz}{dx}=2
-$$
-
-Using the chain rule:
-
-∂E/∂x = (∂E/∂z) × (∂z/∂x)
-
-$$
-= 2z \times 2
-$$
-
-Since \(z=2x\):
-
-$$
-\frac{dE}{dx}=8x
-$$
-
-We calculated how the final error changes with \(x\), even though the error depends on \(x\) through an intermediate variable.
-
-### Why is this important for neural networks?
-
-A neural network contains many connected operations:
-
-```text
-weight → multiplication → sum → activation → next layer → loss
-```
-
-The output depends on earlier weights through a chain of intermediate values.
-
-The chain rule lets us calculate each weight's contribution to the final error by multiplying the relevant local derivatives along the path.
-
-This is the core idea that our visualizer will make visible.
+Instead of trying to calculate everything at once, we break the derivative into smaller pieces.
 
 ---
 
-## 9. Backpropagation: The Mathematics
+# The Problem: Learning Hidden Representations
 
-We will derive backpropagation for our one-hidden-neuron network.
+One of the important ideas in the paper is that hidden units can learn useful internal representations.
 
-The network is:
-
-$$
-z_h=w_1x
-$$
-
-$$
-h=\sigma(z_h)
-$$
-
-$$
-z_y=w_2h
-$$
-
-$$
-y=\sigma(z_y)
-$$
-
-$$
-E=\frac{1}{2}(d-y)^2
-$$
-
-We want to calculate:
-
-$$
-\frac{\partial E}{\partial w_1}
-\quad\text{and}\quad
-\frac{\partial E}{\partial w_2}
-$$
-
-### Step 1: Derivative of error with respect to output
-
-$$
-E=\frac{1}{2}(d-y)^2
-$$
-
-Differentiating with respect to \(y\):
-
-$$
-\frac{\partial E}{\partial y}=y-d
-$$
-
-This derivative tells us how the error changes when the prediction changes.
-
-### Step 2: Derivative of sigmoid
-
-For sigmoid:
-
-$$
-\sigma(z)=\frac{1}{1+e^{-z}}
-$$
-
-Its derivative can be written in terms of its output:
-
-$$
-\sigma'(z)=\sigma(z)(1-\sigma(z))
-$$
-
-Therefore:
-
-$$
-\frac{\partial y}{\partial z_y}=y(1-y)
-$$
-
-### Step 3: Gradient of the output weight
-
-The output weighted input is:
-
-$$
-z_y=w_2h
-$$
-
-So:
-
-$$
-\frac{\partial z_y}{\partial w_2}=h
-$$
-
-Using the chain rule:
-
-$$
-\frac{\partial E}{\partial w_2}
-=
-\frac{\partial E}{\partial y}
-\frac{\partial y}{\partial z_y}
-\frac{\partial z_y}{\partial w_2}
-$$
-
-Substituting:
-
-$$
-\boxed{
-\frac{\partial E}{\partial w_2}
-=
-(y-d)y(1-y)h
-}
-$$
-
-This is the gradient for the weight connecting the hidden neuron to the output neuron.
-
-### Step 4: Gradient of the hidden weight
-
-The hidden weight affects the error through several intermediate values:
-
-$$
-w_1 \rightarrow z_h \rightarrow h \rightarrow z_y \rightarrow y \rightarrow E
-$$
-
-Therefore:
-
-$$
-\frac{\partial E}{\partial w_1}
-=
-\frac{\partial E}{\partial y}
-\frac{\partial y}{\partial z_y}
-\frac{\partial z_y}{\partial h}
-\frac{\partial h}{\partial z_h}
-\frac{\partial z_h}{\partial w_1}
-$$
-
-We already know:
-
-$$
-\frac{\partial E}{\partial y}=y-d
-$$
-
-$$
-\frac{\partial y}{\partial z_y}=y(1-y)
-$$
-
-Also:
-
-$$
-\frac{\partial z_y}{\partial h}=w_2
-$$
-
-$$
-\frac{\partial h}{\partial z_h}=h(1-h)
-$$
-
-And:
-
-$$
-\frac{\partial z_h}{\partial w_1}=x
-$$
-
-Combining these:
-
-$$
-\boxed{
-\frac{\partial E}{\partial w_1}
-=
-(y-d)y(1-y)w_2h(1-h)x
-}
-$$
-
-Notice that the gradient for \(w_1\) includes more factors because its effect travels through the hidden neuron before reaching the output.
-
-### Numerical example
-
-Using:
-
-$$
-x=1,\quad w_1=0.5,\quad w_2=0.8,\quad d=1
-$$
-
-The forward pass gives approximately:
-
-$$
-h=0.6225,\quad y=0.6220
-$$
-
-The gradients are approximately:
-
-$$
-\frac{\partial E}{\partial w_2}\approx -0.0552
-$$
-
-$$
-\frac{\partial E}{\partial w_1}\approx -0.0167
-$$
-
-These values describe how the error changes when each weight changes slightly, while the other values are held fixed.
-
-The negative signs indicate that increasing these weights locally reduces the error for this example.
-
----
-
-## 10. Gradient Descent and Weight Updates
-
-Calculating gradients is not the final step. We use them to adjust the weights.
-
-The paper describes minimizing error using gradient descent.
-
-The basic update rule is:
-
-$$
-\boxed{
-w_{\text{new}}=w_{\text{old}}-\eta\frac{\partial E}{\partial w}
-}
-$$
-
-Where:
-
-* \(w_{\text{old}}\) is the current weight.
-* \(\eta\) is the learning rate.
-* \(\frac{\partial E}{\partial w}\) is the gradient.
-* \(w_{\text{new}}\) is the updated weight.
-
-The learning rate controls the size of the update.
-
-### Example
-
-Suppose:
-
-$$
-w_2=0.8
-$$
-
-$$
-\frac{\partial E}{\partial w_2}=-0.0552
-$$
-
-$$
-\eta=0.1
-$$
-
-Then:
-
-$$
-w_{2,\text{new}}
-=
-0.8-0.1(-0.0552)
-$$
-
-$$
-w_{2,\text{new}}\approx 0.80552
-$$
-
-The weight increases because its gradient is negative.
-
-The same procedure is applied to \(w_1\).
-
-### What happens after updating?
-
-The network's prediction and error may change after the weights are updated.
-
-So training repeats the process:
-
-1. Perform a forward pass.
-2. Calculate the error.
-3. Perform a backward pass.
-4. Calculate gradients.
-5. Update the weights.
-6. Repeat.
-
-The goal is to reduce the error over the training cases.
-
-### Momentum
-
-The paper also discusses an extension involving momentum.
-
-Momentum incorporates a contribution from previous weight changes into the current update. This can affect the path taken during optimization.
-
-Our first implementation focuses on the basic gradient-descent rule. Momentum can be added as a later extension.
-
----
-
-## 11. How Hidden Units Learn Representations
-
-One of the paper's important contributions is its demonstration that hidden units can learn useful internal representations without being given explicit target activations.
-
-Consider a task with inputs and desired outputs. The network is trained to produce the correct output, but the desired activity of its hidden units is not directly specified.
-
-Backpropagation calculates how the output error depends on the hidden units. That information can be used to adjust the weights leading into those units.
-
-Over repeated learning steps, hidden units can develop activation patterns that help the network solve the task.
-
-### Distributed representations
-
-Information does not have to be represented by a single neuron dedicated to one concept.
-
-Instead, a pattern across multiple hidden units can represent useful information. Different patterns of activity can encode different information, and the same unit can contribute to more than one representation.
-
-The paper's family-tree experiment provides an example of learned distributed representations.
-
-### Why does this matter?
-
-The network is not simply memorizing a fixed collection of manually designed features. Its internal connection weights can change to construct representations that support the required input-output behavior.
-
-This is the sense in which backpropagation can help a network *learn representations*.
-
----
-
-## 12. Experiments in the Paper
-
-The paper illustrates the learning procedure through tasks designed to demonstrate what hidden units can learn.
-
-### Experiment 1: Symmetry detection
-
-The paper studies a task in which the network must determine whether an input pattern is symmetrical.
-
-The network receives a pattern and must produce an output corresponding to the symmetry decision.
-
-The authors show that the learning procedure can discover a solution using two intermediate units.
-
-The hidden units develop complementary responses that allow the network to distinguish symmetrical from non-symmetrical patterns.
-
-This example demonstrates that a network can learn a useful internal solution rather than relying entirely on features manually specified in advance.
-
-### Experiment 2: Family-tree relationships
-
-The second experiment involves two isomorphic family trees.
-
-The information is expressed as triples of the form:
-
-```text
-(person 1, relationship, person 2)
-```
-
-For example, the network may receive a person and a relationship and be trained to produce the person who completes the relationship.
-
-The task includes relationships such as:
-
-* Father
-* Mother
-* Husband
-* Wife
-* Son
-* Daughter
-* Uncle
-* Aunt
-* Brother
-* Sister
-* Nephew
-* Niece
-
-The paper describes a layered network that learns distributed representations of people and relationships.
-
-The network was trained on 100 of the 104 possible triples. The paper uses its learned internal activity patterns to illustrate how representations develop within the hidden layers.
-
-The task is important because the network must learn relationships between entities rather than simply return an unrelated output for each input.
-
-### What do the experiments demonstrate?
-
-Together, the experiments illustrate that backpropagation can adjust weights so that hidden units develop internal activity patterns useful for a task.
-
-They support the paper's central argument that learning can construct internal representations through gradient descent.
-
-They are demonstrations of the learning procedure on specific tasks, not a claim that every neural-network problem will be solved easily or that every learned representation will be human-interpretable.
-
----
-
-## 13. Limitations Discussed in the Paper
-
-The paper identifies important limitations.
-
-### Local minima
-
-The error surface of a network can contain local minima.
-
-Gradient descent follows local gradient information. It is therefore not guaranteed to find a global minimum.
-
-The authors note that, in their experience with many tasks, networks did not often become stuck in significantly poor local minima. They also discuss how adding some additional connections can create extra dimensions in weight space and may provide paths around certain barriers.
-
-This is an observation and explanation from the paper, not a guarantee for every architecture or dataset.
-
-### Biological plausibility
-
-The authors explicitly state that the learning procedure, in its current form, is not a plausible model of learning in brains.
-
-The paper presents backpropagation as a powerful computational learning procedure and suggests looking for more biologically plausible ways to perform gradient descent in neural networks.
-
-### Learning useful representations is task-dependent
-
-The hidden representations are developed through the learning objective and network structure.
-
-The procedure does not mean that every hidden unit will learn a simple, meaningful concept or that the learned features will always be easy for a person to interpret.
-
-### What we take from these limitations
-
-Backpropagation provides a way to calculate gradients and improve a network's performance, but it does not remove all challenges of learning.
-
-Understanding the method includes understanding both what it enables and what it does not guarantee.
-
----
-
-## 14. From the Paper to Our Implementation
-
-This project translates the paper's mathematical ideas into a small, interactive program.
-
-The paper explains a general learning procedure for layered networks. Our first implementation deliberately uses a much smaller network so that every calculation can be inspected.
-
-### Our first network
+Consider:
 
 ```text
 Input
-  │
-  ▼
-Hidden neuron
-  │
-  ▼
-Output neuron
-  │
-  ▼
-Loss
+  ↓
+Hidden Units
+  ↓
+Output
 ```
 
-The implementation calculates:
+The hidden units are not explicitly told:
 
-* Weighted inputs
-* Sigmoid activations
-* Prediction
-* Error
-* Local derivatives
-* Gradients for weights
-* Gradient-descent updates
+```text
+"Neuron 1 should learn this feature."
+"Neuron 2 should learn that feature."
+```
 
-### What is simplified?
+Instead, the network receives an error signal from the output.
 
-Our first example has one input, one hidden neuron, one output neuron, and two weights. It omits explicit bias parameters and uses a single input-output case.
+Backpropagation propagates this information backward.
 
-The paper's procedure is more general. It covers layered networks with multiple units and cases, and it explains how derivatives from multiple connected units contribute to the gradients.
+Over repeated training steps, the weights change so that the hidden units develop representations that are useful for the task.
 
-The small example is a teaching model that makes the central chain-rule process easy to follow.
-
-### How the project will grow
-
-After the manual version works, we will implement a `Value` object that stores values, gradients, parent relationships, and local backward functions.
-
-This will let us build a computational graph and calculate gradients by traversing it backward, rather than writing a separate full gradient formula for each network weight.
-
-Later, the project will expand to multiple neurons and matrix operations.
+This is one of the important ideas behind multi-layer neural networks.
 
 ---
 
-## 15. Our Autograd Engine
+# What Is a Neural Network?
 
-Automatic differentiation calculates derivatives by tracking how values are produced through a sequence of operations.
+At its simplest, a neuron performs three operations:
 
-Our goal is to implement a small version of this idea ourselves.
-
-### The `Value` object
-
-Each value in the computational graph will store:
-
-| Property    | Meaning                                  |
-| ----------- | ---------------------------------------- |
-| `data`      | The numerical value                      |
-| `grad`      | The accumulated gradient                 |
-| `parents`   | The values used to produce it            |
-| `operation` | The operation that created it            |
-| `backward`  | The local rule for propagating gradients |
-
-A simplified example:
-
-```python
-class Value:
-    def __init__(self, data, parents=(), operation=""):
-        self.data = data
-        self.grad = 0.0
-        self.parents = set(parents)
-        self.operation = operation
-        self._backward = lambda: None
+```text
+Inputs
+  ↓
+Weighted Sum
+  ↓
+Activation Function
+  ↓
+Output
 ```
 
-This is only the starting structure. Operations such as addition, multiplication, powers, and sigmoid will each need to define how gradients are propagated to their inputs.
+Suppose we have:
 
-### Example computational graph
+```text
+x₁, x₂, x₃
+```
+
+and weights:
+
+```text
+w₁, w₂, w₃
+```
+
+The neuron calculates:
+
+```text
+z = w₁x₁ + w₂x₂ + w₃x₃
+```
+
+Then an activation function is applied:
+
+```text
+y = activation(z)
+```
+
+For a sigmoid neuron:
+
+```text
+y = sigmoid(z)
+```
+
+---
+
+# A Tiny Neural Network
+
+Before building a large neural network, we start with the smallest useful example.
+
+Consider:
+
+```text
+x
+│
+│ w₁
+▼
+Hidden Neuron
+│
+│ w₂
+▼
+Output Neuron
+│
+▼
+y
+```
+
+There is:
+
+* 1 input
+* 1 hidden neuron
+* 1 output neuron
+
+We also have a target:
+
+```text
+d
+```
+
+Our goal is to make:
+
+```text
+y ≈ d
+```
+
+The complete computation is:
+
+```text
+x
+ ↓
+zₕ
+ ↓
+h
+ ↓
+zᵧ
+ ↓
+y
+ ↓
+E
+```
+
+Where:
+
+* `x` = input
+* `w₁` = input → hidden weight
+* `zₕ` = hidden pre-activation
+* `h` = hidden activation
+* `w₂` = hidden → output weight
+* `zᵧ` = output pre-activation
+* `y` = prediction
+* `d` = desired output / target
+* `E` = error
+
+---
+
+# Forward Propagation
+
+The first stage is the **forward pass**.
+
+Information flows from the input toward the output.
+
+## Step 1: Hidden Pre-Activation
+
+The hidden neuron receives:
+
+```text
+zₕ = w₁ × x
+```
+
+## Step 2: Hidden Activation
+
+Apply sigmoid:
+
+```text
+h = sigmoid(zₕ)
+```
+
+## Step 3: Output Pre-Activation
+
+The hidden neuron sends its activation to the output:
+
+```text
+zᵧ = w₂ × h
+```
+
+## Step 4: Output Activation
+
+The final prediction is:
+
+```text
+y = sigmoid(zᵧ)
+```
+
+Therefore:
+
+```text
+x
+ ↓
+zₕ = w₁x
+ ↓
+h = sigmoid(zₕ)
+ ↓
+zᵧ = w₂h
+ ↓
+y = sigmoid(zᵧ)
+```
+
+This entire process is called **forward propagation**.
+
+---
+
+# Activation Function
+
+We use the sigmoid activation function:
+
+```text
+sigmoid(z) = 1 / (1 + e⁻ᶻ)
+```
+
+Its derivative has a particularly useful form:
+
+```text
+sigmoid'(z) = sigmoid(z)(1 - sigmoid(z))
+```
+
+If:
+
+```text
+h = sigmoid(z)
+```
+
+then:
+
+```text
+dh/dz = h(1 - h)
+```
+
+Similarly, if:
+
+```text
+y = sigmoid(zᵧ)
+```
+
+then:
+
+```text
+dy/dzᵧ = y(1 - y)
+```
+
+This derivative is extremely important during backpropagation.
+
+---
+
+# Calculating the Error
+
+After the forward pass, we compare the prediction with the target.
+
+We use the squared error:
+
+```text
+E = ½(d - y)²
+```
+
+Where:
+
+```text
+d = desired output
+y = predicted output
+```
+
+If the prediction is close to the target:
+
+```text
+E → small
+```
+
+If the prediction is far from the target:
+
+```text
+E → large
+```
+
+Our goal is:
+
+```text
+minimize E
+```
+
+---
+
+# Why Do We Need Backpropagation?
+
+Suppose our network produced:
+
+```text
+y = 0.62
+```
+
+but the target is:
+
+```text
+d = 1.0
+```
+
+The prediction is wrong.
+
+We want to change:
+
+```text
+w₁
+w₂
+```
+
+so that the next prediction becomes closer to:
+
+```text
+1.0
+```
+
+But we need to answer:
+
+```text
+How much should w₁ change?
+How much should w₂ change?
+```
+
+In mathematical form, we need:
+
+```text
+∂E/∂w₁
+```
+
+and:
+
+```text
+∂E/∂w₂
+```
+
+These derivatives tell us how the error changes when each weight changes.
+
+---
+
+# The Chain Rule
+
+This is the heart of backpropagation.
 
 Suppose:
 
-```python
-x = Value(1.0)
-w = Value(0.5)
-
-z = x * w
-h = z.sigmoid()
+```text
+a → b → c
 ```
 
-The graph is:
+and:
 
 ```text
- x ─────┐
-        ▼
-      Multiply ───► z ───► Sigmoid ───► h
-        ▲
- w ─────┘
+c = f(b)
+b = g(a)
 ```
 
-Each operation creates a new value and records which earlier values it depends on.
+Then:
 
-During the backward pass, the engine calculates local derivatives and combines them with the gradients arriving from later operations.
+```text
+dc/da = dc/db × db/da
+```
 
-### Why build our own?
+This is the **chain rule**.
 
-A ready-made autograd library can calculate gradients without exposing every internal step.
+Neural networks contain many connected operations.
 
-Our educational engine is intended to show how the process works:
+For example:
 
-1. Values are created.
-2. Operations connect those values.
-3. A computational graph is formed.
-4. A starting gradient is assigned at the output.
-5. Gradients are propagated backward.
-6. The gradients can be used to update parameters.
+```text
+w₁
+ ↓
+zₕ
+ ↓
+h
+ ↓
+zᵧ
+ ↓
+y
+ ↓
+E
+```
 
-This recreates the central mechanics of reverse-mode automatic differentiation on a small scale. It is not intended to reproduce every feature of a mature deep-learning framework.
+To calculate:
+
+```text
+∂E/∂w₁
+```
+
+we follow this path backward:
+
+```text
+∂E/∂y
+×
+∂y/∂zᵧ
+×
+∂zᵧ/∂h
+×
+∂h/∂zₕ
+×
+∂zₕ/∂w₁
+```
+
+Therefore:
+
+```text
+∂E/∂w₁
+=
+∂E/∂y
+×
+∂y/∂zᵧ
+×
+∂zᵧ/∂h
+×
+∂h/∂zₕ
+×
+∂zₕ/∂w₁
+```
+
+This is backpropagation.
 
 ---
 
-## 16. Project Architecture
+# Backpropagation Mathematics
 
-The project separates the mathematics, network structure, and visualization.
+Let's derive everything step by step.
+
+Our forward equations are:
 
 ```text
-backprop-visualizer/
+zₕ = w₁x
+```
+
+```text
+h = sigmoid(zₕ)
+```
+
+```text
+zᵧ = w₂h
+```
+
+```text
+y = sigmoid(zᵧ)
+```
+
+```text
+E = ½(d - y)²
+```
+
+---
+
+## Step 1: Derivative of Error with Respect to Output
+
+Start with:
+
+```text
+E = ½(d - y)²
+```
+
+Differentiate with respect to `y`:
+
+```text
+∂E/∂y = y - d
+```
+
+This tells us how the error changes when the prediction changes.
+
+---
+
+## Step 2: Derivative of Output Activation
+
+We have:
+
+```text
+y = sigmoid(zᵧ)
+```
+
+Therefore:
+
+```text
+∂y/∂zᵧ = y(1 - y)
+```
+
+---
+
+## Step 3: Derivative of Output Pre-Activation
+
+We have:
+
+```text
+zᵧ = w₂h
+```
+
+Therefore:
+
+```text
+∂zᵧ/∂w₂ = h
+```
+
+Using the chain rule:
+
+```text
+∂E/∂w₂
+=
+∂E/∂y
+×
+∂y/∂zᵧ
+×
+∂zᵧ/∂w₂
+```
+
+Therefore:
+
+```text
+∂E/∂w₂
+=
+(y - d)
+×
+y(1 - y)
+×
+h
+```
+
+---
+
+# Gradient for the First Weight
+
+Now we move further backward.
+
+We want:
+
+```text
+∂E/∂w₁
+```
+
+The dependency path is:
+
+```text
+w₁
+ ↓
+zₕ
+ ↓
+h
+ ↓
+zᵧ
+ ↓
+y
+ ↓
+E
+```
+
+Therefore:
+
+```text
+∂E/∂w₁
+=
+∂E/∂y
+×
+∂y/∂zᵧ
+×
+∂zᵧ/∂h
+×
+∂h/∂zₕ
+×
+∂zₕ/∂w₁
+```
+
+We already know:
+
+```text
+∂E/∂y = y - d
+```
+
+```text
+∂y/∂zᵧ = y(1 - y)
+```
+
+From:
+
+```text
+zᵧ = w₂h
+```
+
+we get:
+
+```text
+∂zᵧ/∂h = w₂
+```
+
+From:
+
+```text
+h = sigmoid(zₕ)
+```
+
+we get:
+
+```text
+∂h/∂zₕ = h(1 - h)
+```
+
+And from:
+
+```text
+zₕ = w₁x
+```
+
+we get:
+
+```text
+∂zₕ/∂w₁ = x
+```
+
+Therefore:
+
+```text
+∂E/∂w₁
+=
+(y - d)
+×
+y(1 - y)
+×
+w₂
+×
+h(1 - h)
+×
+x
+```
+
+This is the gradient for the first weight.
+
+---
+
+# Backward Pass
+
+The forward pass calculates:
+
+```text
+x → h → y → E
+```
+
+The backward pass calculates derivatives:
+
+```text
+E → y → h → w₂ → w₁
+```
+
+So the complete process is:
+
+```text
+FORWARD
+
+x
+ ↓
+zₕ
+ ↓
+h
+ ↓
+zᵧ
+ ↓
+y
+ ↓
+E
+
+
+BACKWARD
+
+E
+ ↓
+∂E/∂y
+ ↓
+∂E/∂zᵧ
+ ↓
+∂E/∂h
+ ↓
+∂E/∂w₂
+ ↓
+∂E/∂zₕ
+ ↓
+∂E/∂w₁
+```
+
+This is why it is called **backpropagation**.
+
+The error information propagates backward through the network.
+
+---
+
+# Gradient Descent
+
+Once we calculate the gradients, we need to update the weights.
+
+The basic gradient descent rule is:
+
+```text
+new weight = old weight - learning rate × gradient
+```
+
+For `w₁`:
+
+```text
+w₁ ← w₁ - η(∂E/∂w₁)
+```
+
+For `w₂`:
+
+```text
+w₂ ← w₂ - η(∂E/∂w₂)
+```
+
+Where:
+
+```text
+η = learning rate
+```
+
+The learning rate controls how large each update is.
+
+---
+
+# Understanding the Gradient
+
+Suppose:
+
+```text
+∂E/∂w = -0.05
+```
+
+and:
+
+```text
+η = 0.1
+```
+
+Then:
+
+```text
+w_new = w_old - 0.1(-0.05)
+```
+
+So:
+
+```text
+w_new = w_old + 0.005
+```
+
+The weight increases.
+
+If the gradient is positive:
+
+```text
+∂E/∂w = +0.05
+```
+
+then:
+
+```text
+w_new = w_old - 0.005
+```
+
+The weight decreases.
+
+The gradient tells us the direction in which the error increases.
+
+Gradient descent moves in the opposite direction.
+
+---
+
+# Example Calculation
+
+Let's use:
+
+```text
+x = 1
+w₁ = 0.5
+w₂ = 0.8
+d = 1
+```
+
+and:
+
+```text
+η = 0.1
+```
+
+---
+
+## Forward Pass
+
+First:
+
+```text
+zₕ = w₁x
+```
+
+Therefore:
+
+```text
+zₕ = 0.5 × 1
+```
+
+```text
+zₕ = 0.5
+```
+
+Now:
+
+```text
+h = sigmoid(0.5)
+```
+
+Approximately:
+
+```text
+h ≈ 0.6225
+```
+
+Next:
+
+```text
+zᵧ = w₂h
+```
+
+```text
+zᵧ = 0.8 × 0.6225
+```
+
+```text
+zᵧ ≈ 0.498
+```
+
+Then:
+
+```text
+y = sigmoid(0.498)
+```
+
+Approximately:
+
+```text
+y ≈ 0.622
+```
+
+The target is:
+
+```text
+d = 1
+```
+
+So:
+
+```text
+E = ½(1 - 0.622)²
+```
+
+Approximately:
+
+```text
+E ≈ 0.0714
+```
+
+---
+
+# Calculate the Gradient for w₂
+
+We have:
+
+```text
+∂E/∂w₂
+=
+(y - d)
+×
+y(1 - y)
+×
+h
+```
+
+Using:
+
+```text
+y ≈ 0.622
+d = 1
+h ≈ 0.6225
+```
+
+we get approximately:
+
+```text
+∂E/∂w₂ ≈ -0.0552
+```
+
+---
+
+# Calculate the Gradient for w₁
+
+We have:
+
+```text
+∂E/∂w₁
+=
+(y - d)
+×
+y(1 - y)
+×
+w₂
+×
+h(1 - h)
+×
+x
+```
+
+Substituting the values gives approximately:
+
+```text
+∂E/∂w₁ ≈ -0.0167
+```
+
+---
+
+# Update the Weights
+
+Using:
+
+```text
+w_new = w_old - η × gradient
+```
+
+For `w₂`:
+
+```text
+w₂_new
+=
+0.8 - 0.1(-0.0552)
+```
+
+Therefore:
+
+```text
+w₂_new ≈ 0.80552
+```
+
+For `w₁`:
+
+```text
+w₁_new
+=
+0.5 - 0.1(-0.0167)
+```
+
+Therefore:
+
+```text
+w₁_new ≈ 0.50167
+```
+
+The network has now completed one training step.
+
+---
+
+# How Hidden Units Learn
+
+This is one of the most important ideas to understand.
+
+The hidden neuron does not directly know:
+
+```text
+"What should my output be?"
+```
+
+Instead, it receives information through the chain rule.
+
+The error starts at the output:
+
+```text
+E
+```
+
+and propagates backward:
+
+```text
+E
+ ↓
+Output
+ ↓
+Hidden
+ ↓
+Weights
+```
+
+This allows the hidden layer's weights to change even though there is no direct target for the hidden neuron.
+
+After many training iterations:
+
+```text
+forward pass
+      ↓
+calculate error
+      ↓
+backward pass
+      ↓
+calculate gradients
+      ↓
+update weights
+      ↓
+repeat
+```
+
+The hidden representation gradually changes to help reduce the final task error.
+
+---
+
+# From Mathematics to Code
+
+Now we translate the equations directly into Python.
+
+A minimal forward pass looks like:
+
+```python
+import math
+
+
+def sigmoid(z):
+    return 1 / (1 + math.exp(-z))
+
+
+x = 1.0
+w1 = 0.5
+w2 = 0.8
+
+zh = w1 * x
+h = sigmoid(zh)
+
+zy = w2 * h
+y = sigmoid(zy)
+
+print("Hidden:", h)
+print("Output:", y)
+```
+
+The important thing is that every line corresponds directly to a mathematical equation.
+
+---
+
+# Manual Backpropagation
+
+Now we implement the backward pass ourselves.
+
+```python
+d = 1.0
+
+# Error derivative
+dE_dy = y - d
+
+# Output activation derivative
+dy_dzy = y * (1 - y)
+
+# Gradient for w2
+dzy_dw2 = h
+
+dw2 = dE_dy * dy_dzy * dzy_dw2
+
+# Continue backward through hidden neuron
+dzy_dh = w2
+dh_dzh = h * (1 - h)
+dzh_dw1 = x
+
+dw1 = (
+    dE_dy
+    * dy_dzy
+    * dzy_dh
+    * dh_dzh
+    * dzh_dw1
+)
+
+print("dE/dw2:", dw2)
+print("dE/dw1:", dw1)
+```
+
+This is intentionally written in a verbose way.
+
+We are not trying to write the shortest code.
+
+We are trying to make the computation visible.
+
+---
+
+# Why Build It Manually?
+
+Modern frameworks can calculate gradients automatically.
+
+For example:
+
+```python
+loss.backward()
+```
+
+can calculate gradients for us.
+
+But if we only use:
+
+```python
+loss.backward()
+```
+
+we may not understand what is actually happening.
+
+This project therefore follows this progression:
+
+```text
+1. Calculate derivatives manually
+             ↓
+2. Implement backpropagation manually
+             ↓
+3. Represent operations as a graph
+             ↓
+4. Store local derivatives
+             ↓
+5. Propagate gradients automatically
+             ↓
+6. Build a custom autograd engine
+```
+
+The goal is to understand what automatic differentiation is doing underneath the framework.
+
+---
+
+# Computational Graph
+
+A neural network can be represented as a computational graph.
+
+For our example:
+
+```text
+x
 │
+▼
+zₕ = w₁ × x
+│
+▼
+h = sigmoid(zₕ)
+│
+▼
+zᵧ = w₂ × h
+│
+▼
+y = sigmoid(zᵧ)
+│
+▼
+E = ½(d - y)²
+```
+
+Each operation becomes a node in the graph.
+
+For example:
+
+```text
+w₁ ──┐
+     × ──> zₕ
+x  ──┘
+```
+
+and:
+
+```text
+zₕ
+ │
+ ▼
+sigmoid
+ │
+ ▼
+h
+```
+
+The computational graph gives us a structure that can be traversed backward.
+
+---
+
+# Automatic Differentiation
+
+Automatic differentiation, or **autodiff**, is the process of automatically calculating derivatives by decomposing a computation into elementary operations.
+
+For example:
+
+```text
+a = x × y
+```
+
+The local derivatives are:
+
+```text
+∂a/∂x = y
+```
+
+and:
+
+```text
+∂a/∂y = x
+```
+
+If another operation depends on `a`, the gradient can be propagated backward using the chain rule.
+
+This means we don't need to manually derive an enormous equation for every network.
+
+Instead, we can:
+
+```text
+Build graph
+    ↓
+Store operations
+    ↓
+Store local derivatives
+    ↓
+Run forward
+    ↓
+Run backward
+    ↓
+Accumulate gradients
+```
+
+---
+
+# Our Custom Autograd Engine
+
+The next stage of this project is a tiny autograd engine.
+
+The basic object can be thought of as:
+
+```python
+Value
+```
+
+Each `Value` stores information such as:
+
+```text
+value
+gradient
+operation
+parents
+backward function
+```
+
+Conceptually:
+
+```python
+class Value:
+
+    def __init__(self, data):
+        self.data = data
+        self.grad = 0.0
+```
+
+For an operation such as addition:
+
+```python
+c = a + b
+```
+
+we want the graph to remember:
+
+```text
+a ──┐
+    + ──> c
+b ──┘
+```
+
+During backward propagation:
+
+```text
+dc/da = 1
+dc/db = 1
+```
+
+For multiplication:
+
+```python
+c = a * b
+```
+
+we have:
+
+```text
+dc/da = b
+```
+
+and:
+
+```text
+dc/db = a
+```
+
+This is the foundation of the autograd engine.
+
+---
+
+# Local Gradients
+
+The key idea is:
+
+> Every operation knows how its output changes with respect to its inputs.
+
+For multiplication:
+
+```text
+c = a × b
+```
+
+we store:
+
+```text
+dc/da = b
+dc/db = a
+```
+
+For addition:
+
+```text
+c = a + b
+```
+
+we store:
+
+```text
+dc/da = 1
+dc/db = 1
+```
+
+For sigmoid:
+
+```text
+c = sigmoid(a)
+```
+
+we store:
+
+```text
+dc/da = c(1 - c)
+```
+
+Then the autograd engine combines these local derivatives using the chain rule.
+
+---
+
+# Backward Propagation in the Autograd Engine
+
+Suppose:
+
+```text
+L = f(g(x))
+```
+
+The graph looks like:
+
+```text
+x
+ ↓
+g
+ ↓
+f
+ ↓
+L
+```
+
+The backward pass starts with:
+
+```text
+dL/dL = 1
+```
+
+Then:
+
+```text
+dL/dg
+```
+
+and finally:
+
+```text
+dL/dx
+```
+
+using:
+
+```text
+dL/dx
+=
+dL/dg
+×
+dg/dx
+```
+
+This is exactly the chain rule.
+
+The autograd engine simply performs this process automatically over the computational graph.
+
+---
+
+# Matrix Version
+
+After understanding the one-neuron example, we move to a real multi-neuron network.
+
+Consider:
+
+```text
+3 inputs
+   ↓
+2 hidden neurons
+   ↓
+1 output neuron
+```
+
+Our input vector is:
+
+```text
+x =
+[x₁
+ x₂
+ x₃]
+```
+
+Its shape is:
+
+```text
+3 × 1
+```
+
+The hidden-layer weight matrix is:
+
+```text
+W₁ =
+[w₁₁  w₁₂  w₁₃
+ w₂₁  w₂₂  w₂₃]
+```
+
+Its shape is:
+
+```text
+2 × 3
+```
+
+Therefore:
+
+```text
+W₁ × x
+```
+
+has shape:
+
+```text
+(2 × 3) × (3 × 1)
+```
+
+which produces:
+
+```text
+2 × 1
+```
+
+So:
+
+```text
+zₕ = W₁x
+```
+
+produces two hidden pre-activations.
+
+---
+
+# 3 Inputs → 2 Hidden Neurons → 1 Output
+
+The network looks like:
+
+```text
+          ┌───────────────┐
+x₁ ──────►│               │
+x₂ ──────►│ Hidden Layer  │──────► Output
+x₃ ──────►│               │
+          └───────────────┘
+```
+
+More explicitly:
+
+```text
+             h₁
+           ↗
+x₁ ───────┤
+           ↘
+             h₂ ───────► y
+           ↗
+x₂ ───────┤
+           ↘
+x₃ ───────┘
+```
+
+The forward pass becomes:
+
+```text
+zₕ = W₁x
+```
+
+```text
+h = sigmoid(zₕ)
+```
+
+Then:
+
+```text
+zᵧ = W₂h
+```
+
+and:
+
+```text
+y = sigmoid(zᵧ)
+```
+
+Finally:
+
+```text
+E = ½(d - y)²
+```
+
+---
+
+# Matrix Dimensions
+
+Understanding dimensions is extremely important.
+
+For:
+
+```text
+3 inputs → 2 hidden → 1 output
+```
+
+we use:
+
+```text
+x  = 3 × 1
+W₁ = 2 × 3
+b₁ = 2 × 1
+
+h  = 2 × 1
+
+W₂ = 1 × 2
+b₂ = 1 × 1
+
+y  = 1 × 1
+```
+
+The forward pass is:
+
+```text
+z₁ = W₁x + b₁
+```
+
+giving:
+
+```text
+2 × 1
+```
+
+Then:
+
+```text
+h = sigmoid(z₁)
+```
+
+Then:
+
+```text
+z₂ = W₂h + b₂
+```
+
+giving:
+
+```text
+1 × 1
+```
+
+Finally:
+
+```text
+y = sigmoid(z₂)
+```
+
+---
+
+# Why Matrix Multiplication?
+
+Instead of writing every neuron separately:
+
+```text
+z₁ = w₁₁x₁ + w₁₂x₂ + w₁₃x₃
+
+z₂ = w₂₁x₁ + w₂₂x₂ + w₂₃x₃
+```
+
+we can write:
+
+```text
+z = Wx
+```
+
+This makes neural networks much easier to implement efficiently.
+
+It also makes the dimensions explicit.
+
+---
+
+# Visualization
+
+One of the main goals of this project is to make backpropagation **visible**.
+
+The visualizer should show:
+
+```text
+Input
+  ↓
+Weighted Sum
+  ↓
+Activation
+  ↓
+Output
+  ↓
+Loss
+  ↓
+Backward Pass
+  ↓
+Gradients
+  ↓
+Weight Update
+```
+
+Instead of simply showing:
+
+```text
+loss = 0.04
+```
+
+the visualizer should explain:
+
+```text
+Why is the loss 0.04?
+
+Which operation produced it?
+
+Which gradient caused the weight to change?
+
+How did the error travel backward?
+```
+
+---
+
+# Visualizer Concept
+
+The basic network:
+
+```text
+┌─────────┐
+│ Input x │
+└────┬────┘
+     │
+     │ w₁
+     ▼
+┌──────────┐
+│ Hidden h │
+└────┬─────┘
+     │
+     │ w₂
+     ▼
+┌──────────┐
+│ Output y │
+└────┬─────┘
+     │
+     ▼
+┌──────────┐
+│  Loss E  │
+└──────────┘
+```
+
+During the forward pass:
+
+```text
+x → h → y → E
+```
+
+is highlighted.
+
+During the backward pass:
+
+```text
+E → y → h → weights
+```
+
+is highlighted.
+
+The visualizer can display:
+
+```text
+Current value
+Local derivative
+Gradient
+Updated value
+```
+
+for every operation.
+
+---
+
+# Example Visualizer State
+
+For example:
+
+```text
+Input x
+1.0000
+
+Hidden pre-activation zₕ
+0.5000
+
+Hidden activation h
+0.6225
+
+Output pre-activation zᵧ
+0.4980
+
+Prediction y
+0.6220
+
+Target d
+1.0000
+
+Loss E
+0.0714
+```
+
+Then:
+
+```text
+∂E/∂w₂
+-0.0552
+
+∂E/∂w₁
+-0.0167
+```
+
+Then:
+
+```text
+Old w₁ = 0.5000
+New w₁ = 0.5017
+
+Old w₂ = 0.8000
+New w₂ = 0.8055
+```
+
+This makes the complete training step observable.
+
+---
+
+# Project Architecture
+
+The project is designed in layers.
+
+```text
+                    ┌─────────────────────┐
+                    │     Visualizer      │
+                    └──────────┬──────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │     Neural Network  │
+                    └──────────┬──────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │    Custom Autograd  │
+                    └──────────┬──────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │ Computational Graph │
+                    └──────────┬──────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │ Manual Backprop     │
+                    └──────────┬──────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │ Calculus + Chain    │
+                    │ Rule                │
+                    └─────────────────────┘
+```
+
+The project therefore goes from **theory → implementation → automation → visualization**.
+
+---
+
+# Technology Stack
+
+## Python
+
+Main programming language.
+
+Used for:
+
+* mathematical implementation
+* neural network implementation
+* autograd engine
+* experiments
+
+---
+
+## NumPy
+
+Used for:
+
+* vectors
+* matrices
+* matrix multiplication
+* numerical calculations
+
+Example:
+
+```python
+import numpy as np
+
+x = np.array([[1.0],
+              [2.0],
+              [3.0]])
+
+W = np.array([[0.1, 0.2, 0.3],
+              [0.4, 0.5, 0.6]])
+
+z = W @ x
+```
+
+---
+
+## Streamlit
+
+Used to create the interactive learning interface.
+
+The user can change:
+
+```text
+Input
+Weights
+Target
+Learning rate
+```
+
+and observe how the network changes.
+
+---
+
+## Plotly
+
+Used for interactive visualizations such as:
+
+* loss curves
+* computational graphs
+* gradient visualizations
+* training progress
+* matrix visualizations
+
+---
+
+# Project Structure
+
+A possible project structure is:
+
+```text
+backprop-autograd-visualizer/
+│
+├── README.md
+├── requirements.txt
 ├── app.py
 │
-├── autograd/
+├── src/
 │   ├── __init__.py
-│   ├── value.py
-│   └── operations.py
-│
-├── neural_network/
-│   ├── __init__.py
-│   ├── neuron.py
-│   ├── layer.py
-│   └── network.py
+│   │
+│   ├── manual_backprop.py
+│   ├── autograd.py
+│   ├── neural_network.py
+│   ├── computational_graph.py
+│   └── utils.py
 │
 ├── visualization/
-│   ├── network_graph.py
-│   ├── computation_graph.py
-│   └── charts.py
-│
-├── utils/
-│   └── math_utils.py
+│   ├── __init__.py
+│   ├── graph_visualizer.py
+│   ├── gradient_visualizer.py
+│   └── training_visualizer.py
 │
 ├── tests/
-│   ├── test_operations.py
-│   ├── test_gradients.py
+│   ├── test_derivatives.py
+│   ├── test_autograd.py
 │   └── test_network.py
 │
-├── requirements.txt
-│
-└── README.md
+└── notebooks/
+    ├── 01_derivatives.ipynb
+    ├── 02_chain_rule.ipynb
+    ├── 03_manual_backprop.ipynb
+    ├── 04_autograd.ipynb
+    └── 05_matrix_network.ipynb
 ```
-
-### `app.py`
-
-The Streamlit application. It brings together the controls, mathematical results, visualizations, and explanations.
-
-### `autograd/`
-
-Contains the miniature automatic differentiation engine.
-
-### `neural_network/`
-
-Contains the structures needed to build neurons, layers, and complete networks.
-
-### `visualization/`
-
-Contains the network view, computational graph, and charts.
-
-### `utils/`
-
-Contains reusable mathematical helper functions.
-
-### `tests/`
-
-Contains checks for operations, gradients, and network behavior.
-
-This separation helps keep the mathematical implementation independent of the user interface.
 
 ---
 
-## 17. Technology Stack
+# Running the Project
 
-| Technology                | Role in the project                          |
-| ------------------------- | -------------------------------------------- |
-| Python                    | Main programming language                    |
-| NumPy                     | Numerical calculations and matrix operations |
-| Streamlit                 | Interactive web application                  |
-| Plotly                    | Interactive network views and charts         |
-| NetworkX                  | Computational graph structure, if needed     |
-| Git and GitHub            | Version control and public source repository |
-| Streamlit Community Cloud | Planned deployment platform                  |
-
-### Why Streamlit?
-
-Streamlit allows us to build an interactive Python application without first creating a separate frontend in JavaScript.
-
-It provides controls such as sliders, buttons, columns, and expandable sections. These are useful for changing network parameters and inspecting calculations.
-
-### Why Plotly?
-
-Plotly can display interactive charts and diagrams. It will be used to visualize the network, computational graph, gradients, and loss history.
-
-### Why NumPy?
-
-NumPy provides arrays and matrix operations that will become especially useful when the project expands from a single neuron to a network with multiple inputs and hidden neurons.
-
-### Why not use PyTorch autograd?
-
-The initial learning objective is to understand and implement the calculations, not simply call an existing gradient engine.
-
-We can explore PyTorch later for comparison, but our core educational implementation will calculate gradients ourselves.
-
----
-
-## 18. Running the Project
-
-### Requirements
-
-* Python 3.10 or a compatible newer version
-* pip
-* A web browser
-
-### 1. Clone the repository
+Clone the repository:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/backprop-visualizer.git
-cd backprop-visualizer
+git clone <your-repository-url>
 ```
 
-Replace `YOUR_USERNAME` with your GitHub username and use the actual repository name if it differs.
-
-### 2. Create a virtual environment
-
-On macOS or Linux:
+Move into the project:
 
 ```bash
-python3 -m venv .venv
+cd backprop-autograd-visualizer
+```
+
+Create a virtual environment:
+
+```bash
+python -m venv .venv
+```
+
+Activate it.
+
+### macOS / Linux
+
+```bash
 source .venv/bin/activate
 ```
 
-On Windows:
+### Windows
 
-```powershell
-python -m venv .venv
+```bash
 .venv\Scripts\activate
 ```
 
-### 3. Install dependencies
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-The initial `requirements.txt` will include:
-
-```text
-streamlit
-numpy
-plotly
-```
-
-Additional packages, such as NetworkX, can be added when the computational-graph visualization requires them.
-
-### 4. Run the application
+Run the Streamlit application:
 
 ```bash
 streamlit run app.py
 ```
 
-Streamlit will start the application and provide a local address to open in your browser.
-
-### 5. Explore the network
-
-Change the input, weights, target, and learning rate. Run the forward and backward steps and inspect the calculations.
-
-The goal is to understand not just the final prediction, but how the network arrived at it and how the gradients influence the next update.
+The application should open in your browser.
 
 ---
 
-## 19. Learning Roadmap
+# Requirements
 
-The project will be developed in stages so that every concept is understood before adding more complexity.
-
-### Phase 1 — Manual forward and backward propagation
-
-Build a one-input, one-hidden-neuron, one-output network.
-
-Implement the sigmoid function, loss, chain-rule derivatives, gradients, and weight updates manually.
-
-### Phase 2 — Interactive visualization
-
-Display the network, intermediate values, error, gradients, and updated weights.
-
-Add controls to change the input and network parameters and inspect their effects.
-
-### Phase 3 — Build our own autograd engine
-
-Implement a `Value` class with arithmetic operations and backward functions.
-
-Create a computational graph automatically as values are combined.
-
-### Phase 4 — Visualize the computational graph
-
-Display operations as nodes and dependencies as edges.
-
-Show each node's value and gradient.
-
-### Phase 5 — Step-by-step execution
-
-Allow users to execute one operation at a time during the forward and backward passes.
-
-Highlight the active node and explain the calculation taking place.
-
-### Phase 6 — Multiple neurons
-
-Expand the network to:
+A basic `requirements.txt` can contain:
 
 ```text
-3 inputs → 2 hidden neurons → 1 output
+numpy
+streamlit
+plotly
+networkx
 ```
 
-Introduce weight matrices, bias vectors, and vectorized operations.
-
-### Phase 7 — Matrix visualization
-
-Show the dimensions of input vectors, weight matrices, and output vectors.
-
-Visualize how matrix multiplication combines inputs and weights to produce each layer's values.
-
-### Phase 8 — Training visualization
-
-Repeat forward and backward passes over training steps.
-
-Display changes in weights, predictions, gradients, and loss over time.
-
-### Phase 9 — Gradient checking
-
-Compare gradients from our backward implementation with numerical approximations using finite differences.
-
-This helps identify mistakes in the derivative calculations.
-
-### Phase 10 — Deployment
-
-Prepare the application for deployment using Streamlit Community Cloud, with the source code maintained in GitHub.
+Additional packages can be added as the project grows.
 
 ---
 
-## 20. What This Project Teaches
+# Learning Roadmap
 
-By following this project, a learner can explore several connected ideas:
+The project follows a deliberate learning sequence.
 
-* How a neuron calculates a weighted sum and applies an activation function.
-* How neural networks transform input values into predictions.
-* How a loss function measures prediction error.
-* Why derivatives describe sensitivity to changes in values.
-* How the chain rule connects derivatives through multiple operations.
-* How backpropagation calculates gradients from output to earlier layers.
-* How gradient descent uses those gradients to update weights.
-* How hidden units can develop useful internal representations.
-* How a computational graph records dependencies between operations.
-* How a small autograd engine can propagate gradients automatically.
-* How matrix multiplication supports networks with multiple neurons.
-* How gradient checking can help validate an implementation.
+## Phase 1 — Calculus
 
-### The main learning objective
+Learn:
 
-The objective is not just to run a neural network.
-
-It is to understand the process that allows the network to learn, from the first multiplication in the forward pass to the final weight update.
-
-The project connects the mathematical ideas in the 1986 paper to a working implementation that can be inspected and extended.
+```text
+Functions
+   ↓
+Derivatives
+   ↓
+Partial Derivatives
+   ↓
+Chain Rule
+```
 
 ---
 
-## 21. References
+## Phase 2 — Single Neuron
 
-### Primary research paper
+Implement:
+
+```text
+x
+ ↓
+z
+ ↓
+sigmoid
+ ↓
+y
+ ↓
+loss
+```
+
+Then calculate:
+
+```text
+dL/dw
+```
+
+manually.
+
+---
+
+## Phase 3 — One Hidden Neuron
+
+Implement:
+
+```text
+Input
+ ↓
+Hidden
+ ↓
+Output
+ ↓
+Loss
+```
+
+Calculate:
+
+```text
+∂E/∂w₁
+∂E/∂w₂
+```
+
+manually.
+
+---
+
+## Phase 4 — Manual Backpropagation
+
+Implement the complete process:
+
+```text
+Forward pass
+      ↓
+Loss
+      ↓
+Backward pass
+      ↓
+Gradients
+      ↓
+Weight update
+```
+
+without using an automatic differentiation library.
+
+---
+
+## Phase 5 — Computational Graph
+
+Represent every operation as a node.
+
+For example:
+
+```text
+x ──┐
+    × ──> z
+w ──┘
+      │
+      ▼
+   sigmoid
+      │
+      ▼
+      y
+```
+
+---
+
+## Phase 6 — Custom Autograd
+
+Build a `Value` object capable of:
+
+```text
++
+-
+*
+/
+power
+exp
+log
+sigmoid
+```
+
+Each operation should record its local derivative.
+
+---
+
+## Phase 7 — Backward Engine
+
+Implement:
+
+```python
+.backward()
+```
+
+The method should:
+
+1. Build a topological ordering of the graph.
+2. Start the output gradient at `1`.
+3. Traverse the graph backward.
+4. Apply each local derivative.
+5. Accumulate gradients.
+
+---
+
+## Phase 8 — Matrix Neural Network
+
+Move from:
+
+```text
+1 → 1 → 1
+```
+
+to:
+
+```text
+3 → 2 → 1
+```
+
+Then eventually:
+
+```text
+n → hidden layers → m
+```
+
+---
+
+## Phase 9 — Visualization
+
+Visualize:
+
+```text
+Computational graph
+Forward pass
+Backward pass
+Gradients
+Weight updates
+Loss
+Training progress
+```
+
+---
+
+## Phase 10 — Deployment
+
+The final application can be deployed as an interactive educational tool.
+
+Possible deployment options include:
+
+```text
+Streamlit-based hosting
+Cloud deployment
+Docker
+```
+
+---
+
+# Gradient Checking
+
+An important part of the project is verifying that our autograd implementation is correct.
+
+We can compare:
+
+```text
+Analytical gradient
+```
+
+against:
+
+```text
+Numerical gradient
+```
+
+The numerical derivative can be approximated using:
+
+```text
+f'(x) ≈ [f(x + ε) - f(x - ε)] / (2ε)
+```
+
+For a weight `w`:
+
+```text
+numerical_gradient
+=
+[E(w + ε) - E(w - ε)]
+/
+(2ε)
+```
+
+Then compare it with:
+
+```text
+autograd_gradient
+```
+
+If the values are very close, our implementation is probably correct.
+
+---
+
+# Why Gradient Checking Matters
+
+A tiny mistake in backpropagation can produce completely incorrect training.
+
+For example:
+
+```text
+Correct gradient:
+-0.0167
+
+Incorrect gradient:
++0.167
+```
+
+The network may still run.
+
+Python may not produce an error.
+
+But training can fail.
+
+Gradient checking helps catch these silent mathematical errors.
+
+---
+
+# What This Project Is Trying to Teach
+
+This project is not just about making a neural network.
+
+It is about understanding what happens underneath neural-network libraries.
+
+By the end, the goal is to understand:
+
+```text
+What is a derivative?
+```
+
+```text
+What is a partial derivative?
+```
+
+```text
+What is the chain rule?
+```
+
+```text
+What is a gradient?
+```
+
+```text
+What is forward propagation?
+```
+
+```text
+What is backpropagation?
+```
+
+```text
+How does a hidden neuron receive an error signal?
+```
+
+```text
+How does gradient descent update a weight?
+```
+
+```text
+What is a computational graph?
+```
+
+```text
+What is automatic differentiation?
+```
+
+```text
+How does an autograd engine work?
+```
+
+```text
+How does matrix multiplication implement neural-network layers?
+```
+
+---
+
+# Backpropagation in One Picture
+
+The entire idea can be summarized as:
+
+```text
+                 FORWARD PASS
+                     
+Input
+  │
+  ▼
+Weighted Sum
+  │
+  ▼
+Activation
+  │
+  ▼
+Prediction
+  │
+  ▼
+Loss
+  │
+  │
+  │
+  ▼
+BACKWARD PASS
+
+Loss
+  │
+  ▼
+Gradients
+  │
+  ▼
+Weight Updates
+  │
+  ▼
+Better Prediction
+```
+
+Then repeat:
+
+```text
+Forward
+   ↓
+Loss
+   ↓
+Backward
+   ↓
+Update
+   ↓
+Forward
+   ↓
+...
+```
+
+---
+
+# Backpropagation vs Autograd
+
+These concepts are related but should not be treated as exactly the same thing.
+
+## Backpropagation
+
+Backpropagation is an algorithm for efficiently calculating gradients through a layered computational structure.
+
+It uses the chain rule.
+
+---
+
+## Automatic Differentiation
+
+Automatic differentiation is a broader technique for automatically computing derivatives by decomposing computations into elementary operations.
+
+Our custom autograd engine uses reverse-mode automatic differentiation.
+
+For a neural-network loss with many parameters and a small number of outputs, reverse-mode autodiff is particularly useful.
+
+The relationship can be viewed as:
+
+```text
+Calculus
+   ↓
+Chain Rule
+   ↓
+Computational Graph
+   ↓
+Reverse-Mode Automatic Differentiation
+   ↓
+Backpropagation
+```
+
+---
+
+# Limitations
+
+The original paper discusses important limitations of backpropagation.
+
+One important issue is that gradient-based optimization can encounter **local minima**.
+
+This means the optimization process does not necessarily guarantee that the network will find the global minimum of the error function.
+
+The paper also discusses the biological plausibility of backpropagation and notes that the learning procedure described is not intended as a biologically realistic model of learning.
+
+Our implementation has additional educational limitations:
+
+* It starts with very small networks.
+* It focuses on understanding rather than performance.
+* It is not intended to compete with production deep-learning frameworks.
+* The visualizer prioritizes transparency over computational efficiency.
+* The custom autograd engine is intentionally small.
+
+---
+
+# What Makes This Project Different?
+
+Instead of starting with:
+
+```python
+import torch
+
+loss.backward()
+```
+
+we start with:
+
+```text
+Why does backward() work?
+```
+
+Then we build it ourselves.
+
+The learning sequence is:
+
+```text
+Math
+ ↓
+Manual calculation
+ ↓
+Python implementation
+ ↓
+Computational graph
+ ↓
+Autograd
+ ↓
+Neural network
+ ↓
+Visualization
+```
+
+The objective is to turn something that often feels like a black box into something that can be inspected step by step.
+
+---
+
+# Future Improvements
+
+Possible future extensions include:
+
+## More Layers
+
+```text
+Input
+ ↓
+Hidden 1
+ ↓
+Hidden 2
+ ↓
+Hidden 3
+ ↓
+Output
+```
+
+---
+
+## More Activation Functions
+
+Implement:
+
+```text
+Sigmoid
+ReLU
+Tanh
+Softmax
+```
+
+---
+
+## More Loss Functions
+
+Implement:
+
+```text
+Mean Squared Error
+Binary Cross Entropy
+Cross Entropy
+```
+
+---
+
+## Bias Parameters
+
+Extend the network from:
+
+```text
+z = Wx
+```
+
+to:
+
+```text
+z = Wx + b
+```
+
+---
+
+## Mini-Batch Training
+
+Instead of training one example at a time:
+
+```text
+sample 1
+sample 2
+sample 3
+...
+```
+
+train using batches.
+
+---
+
+## Optimizers
+
+Implement:
+
+```text
+Gradient Descent
+Momentum
+Adam
+```
+
+---
+
+## Better Computational Graph
+
+Allow users to inspect:
+
+```text
+Node
+Value
+Operation
+Local derivative
+Gradient
+Parents
+```
+
+for every operation.
+
+---
+
+# The Ultimate Goal
+
+The final version of this project should allow someone to enter:
+
+```text
+x = 1
+w₁ = 0.5
+w₂ = 0.8
+target = 1
+learning rate = 0.1
+```
+
+and visually watch:
+
+```text
+1. Forward pass starts
+        ↓
+2. zₕ is calculated
+        ↓
+3. sigmoid produces h
+        ↓
+4. zᵧ is calculated
+        ↓
+5. sigmoid produces y
+        ↓
+6. Loss is calculated
+        ↓
+7. Backward pass starts
+        ↓
+8. Gradients are calculated
+        ↓
+9. Weights are updated
+        ↓
+10. Loss changes
+```
+
+Then the same idea should scale to:
+
+```text
+3 inputs
+    ↓
+2 hidden neurons
+    ↓
+1 output
+```
+
+and eventually to larger neural networks.
+
+---
+
+# References
+
+## Research Paper
 
 Rumelhart, D. E., Hinton, G. E., & Williams, R. J. (1986).
 
 **Learning representations by back-propagating errors.**
 
-*Nature, 323*, 533–536.
+Nature, 323, 533–536.
 
+DOI:
+
+```text
 https://doi.org/10.1038/323533a0
-
-This paper is the primary source for the learning procedure, mathematical framing, hidden representations, experiments, and limitations discussed in this README.
-
-### Related foundational work
-
-The paper situates its method in the broader history of neural-network learning, including earlier perceptron learning procedures and work on distributed representations. Its own reference list provides further sources for readers interested in the historical background.
+```
 
 ---
 
-## ✨ Final Note
+# Project Philosophy
 
-This project is a learning implementation inspired by the paper, not a reproduction of every experiment or every architectural detail in the original research.
+> **Don't just use backpropagation. Understand it.**
 
-The initial network is intentionally small, and its equations are written explicitly so that the learning process is easy to inspect. As the project grows, the same underlying ideas will be extended to multiple neurons, computational graphs, and an autograd engine built from scratch.
+Modern machine-learning frameworks make training neural networks extremely easy.
 
-**The goal is to make backpropagation something you can see, calculate, implement, debug, and truly understand.**
+But the mathematics underneath is still:
+
+```text
+Derivatives
++
+Chain Rule
++
+Computational Graph
++
+Gradient Descent
+```
+
+This project is an attempt to make those ideas visible.
+
+Instead of treating:
+
+```python
+loss.backward()
+```
+
+as magic, we build the mechanism ourselves.
+
+---
+
+# Final Learning Map
+
+```text
+                 MACHINE LEARNING
+                        │
+                        ▼
+                   NEURAL NETWORK
+                        │
+                        ▼
+                  FORWARD PASS
+                        │
+                        ▼
+                      LOSS
+                        │
+                        ▼
+                  CHAIN RULE
+                        │
+                        ▼
+                  BACKPROPAGATION
+                        │
+                        ▼
+                    GRADIENTS
+                        │
+                        ▼
+                 GRADIENT DESCENT
+                        │
+                        ▼
+                COMPUTATIONAL GRAPH
+                        │
+                        ▼
+                 AUTOMATIC DIFFERENTIATION
+                        │
+                        ▼
+                  CUSTOM AUTOGRAD
+                        │
+                        ▼
+                    VISUALIZER
+```
+
+**The goal is not just to train a neural network.**
+
+**The goal is to understand every number that makes the network learn.**
